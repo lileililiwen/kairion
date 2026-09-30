@@ -19,8 +19,9 @@ Repository bootstrap and planning artifacts are in progress. This is **PLANNING 
 - `gh repo edit` set the approved description, homepage `https://github.com/lileililiwen/kairion`, and topics `ai, demand-intelligence, founders, market-research, open-source`.
 - The shared Workspace Governance GitHub metadata publisher returned `metadata_verified` with no differences and recorded publication in `.project.json`.
 - `gh repo view --json nameWithOwner,description,homepageUrl,visibility,repositoryTopics,url` reported public `lileililiwen/kairion`, the matching description/homepage/topics. `git ls-remote --heads origin main` returned `fe62f430af922c8bae9ffe2874489773cdddd843 refs/heads/main`.
-- OpenSpec strict validation passed (1 change, 0 failures). Workspace Governance reported `DISCOVERED_UNREGISTERED` and `CI_MISSING`; it also reported unrelated pre-existing missing directory `jenkins-bootstrap`. Central registry changes are outside this bootstrap.
-- No application build, tests, runtime, or screenshot has been run. Capture is blocked because there is no application source tree; `docs/assets/capture-plan.md` records the next action. CI awaits an executable application source tree.
+- OpenSpec strict validation passed (1 change, 0 failures). Repository CI now runs bootstrap metadata checks and strict OpenSpec validation; .NET/web builds are conditional on those source manifests existing. No app build is currently available.
+- Workspace Governance reported `DISCOVERED_UNREGISTERED` for the two new projects; this is expected under the workspace discovery policy and does not require a registry edit. It also reports unrelated pre-existing missing directory `jenkins-bootstrap`.
+- No application tests, runtime, or screenshot has been run. Capture is blocked because there is no application source tree; `docs/assets/capture-plan.md` records the next action.
 
 ## Next actions
 
