@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "id": "kairion",
+  "kind": "product",
+  "profile": "dotnet-product",
+  "lifecycle": "active",
+  "verification": {
+    "command": "dotnet build && npm run build",
+    "gate_runtime": "driftwatchdog",
+    "evidence_status": "planned"
+  },
+  "deployment": {
+    "deployable": false,
+    "jenkins_job": null,
+    "compose_file": null
+  },
+  "discoverability": {
+    "description": "Open-source AI-powered demand intelligence for founders, grounded in linked community evidence.",
+    "keywords": [
+      "demand-intelligence",
+      "founder",
+      "research",
+      "pain",
+      "signals",
+      "community",
+      "evidence"
+    ],
+    "topics": [
+      "demand-intelligence",
+      "market-research",
+      "open-source",
+      "ai",
+      "founders"
+    ],
+    "audience": [
+      "founders",
+      "developers",
+      "product-researchers"
+    ],
+    "use_cases": [
+      "Research emerging product demand from public discussion evidence",
+      "Cluster and track recurring problems with traceable source links"
+    ],
+    "search_phrases": [
+      "open-source AI demand intelligence for founders"
+    ],
+    "homepage": "https://github.com/lileililiwen/kairion",
+    "license_spdx": "MIT",
+    "visibility": "public"
+  }
+}
