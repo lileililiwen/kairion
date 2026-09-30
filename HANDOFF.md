@@ -12,11 +12,15 @@ Repository bootstrap and planning artifacts are in progress. This is **PLANNING 
 
 ## Verification evidence
 
-- `openspec init --tools codex` created the repository OpenSpec structure (`spec-driven`). Codex prompt installation was blocked because `/home/paul/.codex/prompts/opsx-explore.md` is read-only; repository OpenSpec files are available.
+- `openspec init --tools codex` created the repository OpenSpec structure (`spec-driven`). Codex prompt installation was blocked because the user-level prompt directory is read-only; repository OpenSpec files are available.
 - .NET SDKs 8.0.424 and 10.0.400 are installed in the workspace environment. No Kairion solution or React app exists yet.
-- GitHub CLI authentication was confirmed outside the sandbox. Repo existence checks found no `lileililiwen/kairion` repository.
-- No application build, tests, runtime, or screenshot has been run. `docs/assets/capture-plan.md` records the capture blocker and retry steps.
-- Workspace Governance audit reported `DISCOVERED_UNREGISTERED`, `CI_MISSING`, and `PUBLICATION_UNVERIFIED` for this new repository; it also reported the unrelated pre-existing missing directory `jenkins-bootstrap`. Central registry changes are outside this bootstrap. Publication evidence will be updated after GitHub creation; CI awaits an executable application source tree.
+- GitHub CLI authentication passed outside the sandbox. Initial repository existence check found no prior `lileililiwen/kairion`.
+- Published with `gh repo create lileililiwen/kairion --public --source . --remote origin --push`; initial commit `fe62f430af922c8bae9ffe2874489773cdddd843` reached `main`.
+- `gh repo edit` set the approved description, homepage `https://github.com/lileililiwen/kairion`, and topics `ai, demand-intelligence, founders, market-research, open-source`.
+- The shared Workspace Governance GitHub metadata publisher returned `metadata_verified` with no differences and recorded publication in `.project.json`.
+- `gh repo view --json nameWithOwner,description,homepageUrl,visibility,repositoryTopics,url` reported public `lileililiwen/kairion`, the matching description/homepage/topics. `git ls-remote --heads origin main` returned `fe62f430af922c8bae9ffe2874489773cdddd843 refs/heads/main`.
+- OpenSpec strict validation passed (1 change, 0 failures). Workspace Governance reported `DISCOVERED_UNREGISTERED` and `CI_MISSING`; it also reported unrelated pre-existing missing directory `jenkins-bootstrap`. Central registry changes are outside this bootstrap.
+- No application build, tests, runtime, or screenshot has been run. Capture is blocked because there is no application source tree; `docs/assets/capture-plan.md` records the next action. CI awaits an executable application source tree.
 
 ## Next actions
 

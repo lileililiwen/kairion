@@ -47,5 +47,13 @@
     "homepage": "https://github.com/lileililiwen/kairion",
     "license_spdx": "MIT",
     "visibility": "public"
+  },
+  "publication": {
+    "provider": "github",
+    "owner": "lileililiwen",
+    "repository": "kairion",
+    "default_branch": "main",
+    "state": "metadata_verified",
+    "evidence_ref": "HANDOFF.md"
   }
 }
