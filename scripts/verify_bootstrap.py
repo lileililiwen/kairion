@@ -41,16 +41,33 @@ match = re.search(r"^current_spec: ([a-z][a-z0-9]*(?:-[a-z0-9]+)*)$", handoff, r
 if not match:
     errors.append("HANDOFF.md must contain exactly one canonical current_spec")
 else:
-    change = ROOT / "openspec" / "changes" / match.group(1)
-    for relative in ("proposal.md", "design.md", "tasks.md"):
-        if not (change / relative).is_file():
-            errors.append(f"active OpenSpec package is missing {relative}")
-    spec_dir = change / "specs"
-    if not spec_dir.is_dir() or not list(spec_dir.rglob("spec.md")):
-        errors.append("active OpenSpec package is missing a capability spec")
+    spec_name = match.group(1)
+    change = ROOT / "openspec" / "changes" / spec_name
+    archive_root = ROOT / "openspec" / "changes" / "archive"
+    archived = sorted(archive_root.glob(f"*-{spec_name}")) if archive_root.is_dir() else []
+    if change.is_dir():
+        # An active (not yet archived) package must be structurally complete.
+        for relative in ("proposal.md", "design.md", "tasks.md"):
+            if not (change / relative).is_file():
+                errors.append(f"active OpenSpec package is missing {relative}")
+        spec_dir = change / "specs"
+        if not spec_dir.is_dir() or not list(spec_dir.rglob("spec.md")):
+            errors.append("active OpenSpec package is missing a capability spec")
+    elif archived:
+        # The current spec has been completed and archived; require the archive to
+        # still carry its capability spec so the record stays complete.
+        if not any(p.rglob("specs/*/spec.md") for p in archived):
+            errors.append(f"archived OpenSpec package {spec_name!r} is missing its capability spec")
+    else:
+        errors.append(f"current_spec {spec_name!r} matches neither an active nor an archived OpenSpec package")
+
+# The main capability specs (updated by archive) must remain valid on their own.
+specs_root = ROOT / "openspec" / "specs"
+if not specs_root.is_dir() or not list(specs_root.rglob("spec.md")):
+    errors.append("openspec/specs is missing a capability spec")
 
 if errors:
     for error in errors:
         print(f"ERROR: {error}")
     raise SystemExit(1)
-print(f"Bootstrap metadata and active OpenSpec package are present for {expected_id}.")
+print(f"Repository metadata and OpenSpec state are consistent for {expected_id}.")

@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Kairion.Api/Kairion.Api.csproj" />
+    <Project Path="src/Kairion.Application/Kairion.Application.csproj" />
+    <Project Path="src/Kairion.Domain/Kairion.Domain.csproj" />
+    <Project Path="src/Kairion.Infrastructure/Kairion.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Kairion.IntegrationTests/Kairion.IntegrationTests.csproj" />
+    <Project Path="tests/Kairion.UnitTests/Kairion.UnitTests.csproj" />
+  </Folder>
+</Solution>

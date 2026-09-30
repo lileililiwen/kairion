@@ -1,0 +1,56 @@
+# Local self-hosting stack: PostgreSQL 16 + API + web.
+#
+# Copy `.env.example` to `.env` (gitignored) and set KAIRION_DB_PASSWORD before
+# `docker compose up`. No credentials are stored in this file.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kairion-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kairion
+      POSTGRES_PASSWORD: ${KAIRION_DB_PASSWORD:?set KAIRION_DB_PASSWORD in .env}
+      POSTGRES_DB: kairion
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - kairion-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kairion -d kairion"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Kairion.Api/Dockerfile
+    container_name: kairion-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: "http://+:8080"
+      Kairion__UseHangfire: "true"
+      Kairion__ConnectionString: "Host=postgres;Port=5432;Database=kairion;Username=kairion;Password=${KAIRION_DB_PASSWORD:?set KAIRION_DB_PASSWORD in .env}"
+    ports:
+      - "127.0.0.1:5288:8080"
+    restart: unless-stopped
+
+  web:
+    image: node:20-alpine
+    container_name: kairion-web
+    working_dir: /app
+    volumes:
+      - ./web:/app
+    command: ["sh", "-c", "npm ci && npm run build && npx vite preview --host 0.0.0.0 --port 5173"]
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  kairion-pgdata:

@@ -1,0 +1,24 @@
+<Project>
+  <!--
+    Kairion repository-local MSBuild baseline. The workspace-wide Directory.Build.props
+    chain imports Platform.Consumer.props, which auto-injects a ProjectReference to
+    Platform.Core for all net10.0 projects. Kairion's design decision is to own
+    provider-neutral AI and jobs contracts locally and not depend on dotnet-platform-libs
+    as the domain model; opting out here enforces that boundary.
+  -->
+  <PropertyGroup>
+    <PlatformConsumerOptOut>true</PlatformConsumerOptOut>
+    <TargetFramework Condition="'$(TargetFramework)' == ''">net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <!--
+      Kairion's MVP code uses provider-neutral interfaces and explicit DTOs; the
+      "missing XML comment" warning stays off until documentation is fleshed out.
+    -->
+    <NoWarn>$(NoWarn);CS1591;CA1515;CA1812;CA2007;CA2254;CA1031;CA1822;CA1056;CA1054;CA1303;CA1305;CA1308;CA1848;CA2208;CA1721;CA1816;CA1819;CA1861;CA1716;CA2252;CA2253;CA1724;CA1711;CA1000;CA1014;CA1024;CA1707;CA1701;CA1709;CA1812;CA1052;CA2227;CA1002;CA1051;CA1859;CA1862;CA1860;CA1826;CA1851;CA1311;CA1310;CA1304;CA1311;CA1727;CA1724;CA1054</NoWarn>
+  </PropertyGroup>
+</Project>

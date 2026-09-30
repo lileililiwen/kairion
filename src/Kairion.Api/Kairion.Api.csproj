@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>kairion-api</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    <!--
+      Swashbuckle 7.2.0 depends on Microsoft.OpenApi 1.6.22. The .NET 10 framework
+      brings Microsoft.OpenApi 2.0.0 transitively; without a downgrade override the
+      swagger generator throws TypeLoadException at runtime. Pinning to 1.6.22 here
+      keeps the swagger UI working.
+    -->
+    <PackageReference Include="Microsoft.OpenApi" Version="1.6.22" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.20" />
+    <PackageReference Include="Hangfire.PostgreSql" Version="1.20.10" />
+    <!-- Required by `dotnet ef` to scaffold migrations against the API startup project. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kairion.Application\Kairion.Application.csproj" />
+    <ProjectReference Include="..\Kairion.Infrastructure\Kairion.Infrastructure.csproj" />
+    <ProjectReference Include="..\Kairion.Domain\Kairion.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

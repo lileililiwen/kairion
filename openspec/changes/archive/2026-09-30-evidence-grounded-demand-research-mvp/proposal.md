@@ -15,10 +15,10 @@ Founders need a way to distinguish recurring, growing product problems from a pi
 | Package | Single outcome | Owner/project and language | Boundary/contract | Depends on | Independent oracle |
 |---|---|---|---|---|---|
 | `evidence-grounded-demand-research-mvp` | Evidence-linked demand signals for one self-hosted owner | Kairion; C#/.NET 10 and TypeScript/React | Research project → source item → analysis → cluster → evidence/trend/opportunity read API | Product foundation | End-to-end fixture shows each signal with its original source; counts match stored UTC observations |
-| `additional-source-adapters-and-competitor-gaps` | Expand source coverage and compare competitor problem gaps | Kairion; C#/.NET 10 and TypeScript | Versioned `ISourceProvider` plus competitor grouping | MVP | Adapter contract suite and cross-competitor evidence matrix |
-| `hosted-collaboration-and-managed-ai` | Multi-user hosted operation and managed provider billing | Kairion; separate service lifecycle | Account/tenant/billing and secret custody boundary | MVP and security review | Tenant isolation, billing and deployment evidence |
+| `additional-source-adapters` | Add bounded, policy-compliant source providers | Kairion; C#/.NET 10 | Existing `ISourceProvider` normalized candidate contract | MVP | Adapter contract fixtures and idempotent ingestion |
+| `competitor-gap-analysis` | Compare problem-cluster evidence across competitors | Kairion; C#/.NET 10 and TypeScript | Existing competitor, cluster and evidence read models | MVP | Fixed dataset yields reproducible matrix and source links |
 
-The MVP is a vertical slice because its entities share one evidence lifecycle and must become useful together. Additional provider/catalog growth and hosted SaaS have separate owners, security boundaries, and acceptance oracles and are excluded.
+The MVP is a vertical slice because its entities share one evidence lifecycle and must become useful together. Source retrieval and competitor comparison have separate lifecycles and oracles, so they are independent follow-up changes. Hosted SaaS, billing and managed AI remain deferred and have no roadmap package in this planning baseline.
 
 ## Sibling and Shared Architecture Reconnaissance
 
