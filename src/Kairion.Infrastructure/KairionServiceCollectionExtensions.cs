@@ -80,6 +80,7 @@ public static class KairionServiceCollectionExtensions
         services.AddScoped<IClusterAssignmentRepository, ClusterAssignmentRepository>();
         services.AddScoped<IHumanRevisionRepository, HumanRevisionRepository>();
         services.AddScoped<IObservationRepository, ObservationRepository>();
+        services.AddScoped<ISourceIngestionRunRepository, SourceIngestionRunRepository>();
 
         // Application services.
         services.AddSingleton<IClock, SystemClock>();
@@ -96,6 +97,11 @@ public static class KairionServiceCollectionExtensions
         // Source / AI providers.
         services.AddSingleton<ISourceProvider, ManualSourceProvider>();
         services.AddSingleton<ISourceProvider, DemoSearchSourceProvider>();
+        services.AddHttpClient<HackerNewsSourceProvider>();
+        services.AddSingleton<ISourceProvider>(sp => sp.GetRequiredService<HackerNewsSourceProvider>());
+        services.AddHttpClient<ConfiguredWebSearchProvider>();
+        services.AddSingleton<ISourceProvider>(sp => sp.GetRequiredService<ConfiguredWebSearchProvider>());
+        services.Configure<HackerNewsOptions>(configuration.GetSection("Kairion:SourceProviders:HackerNews"));
         services.AddSingleton<IAiProvider, DeterministicDemoAiProvider>();
         services.AddSingleton<IProviderRegistry, ProviderRegistry>();
 

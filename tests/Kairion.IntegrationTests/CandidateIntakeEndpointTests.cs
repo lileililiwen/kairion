@@ -164,7 +164,7 @@ public class CandidateIntakeEndpointTests : IAsyncLifetime
             briefText = "Brief text for testing.",
             topics = Array.Empty<string>(),
             includedCompetitors = Array.Empty<string>(),
-            enabledSourceProviderIds = new[] { "manual" },
+            enabledSourceProviderIds = new[] { "manual", "fake-source" },
         };
         var response = await client.PostAsJsonAsync("/api/v1/research-projects", body, TestJson.Options);
         response.StatusCode.Should().Be(HttpStatusCode.Created);

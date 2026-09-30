@@ -58,6 +58,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export type BriefKind = "market" | "category" | "competitor" | "question";
 
+export interface SourceProviderConfig {
+  providerId: string;
+  enabled: boolean;
+  maxQueries: number;
+  maxResultsPerQuery: number;
+  endpoint?: string | null;
+  credentialRef?: string | null;
+}
+
 export interface ResearchProject {
   id: string;
   title: string;
@@ -66,6 +75,7 @@ export interface ResearchProject {
   topics: string[];
   includedCompetitors: string[];
   enabledSourceProviderIds: string[];
+  providerConfigs: SourceProviderConfig[];
   queryStrategy: string | null;
   windowStartUtc: string | null;
   windowEndUtc: string | null;
@@ -82,6 +92,7 @@ export interface CreateResearchProjectRequest {
   topics?: string[];
   includedCompetitors?: string[];
   enabledSourceProviderIds?: string[];
+  providerConfigs?: SourceProviderConfig[];
   queryStrategy?: string | null;
   windowStartUtc?: string | null;
   windowEndUtc?: string | null;
@@ -215,6 +226,19 @@ export interface SourceProviderInfo {
   providerId: string;
   displayName: string;
   requiresCredentials: boolean;
+  available?: boolean;
+}
+
+export interface SourceIngestionRun {
+  id: string;
+  projectId: string;
+  runId: string;
+  providerId: string;
+  status: string;
+  candidateCount: number;
+  diagnosticCode: string;
+  retrievedAtUtc: string;
+  retryAfterUtc: string | null;
 }
 
 export interface AiProviderInfo {
@@ -259,6 +283,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  collectCandidates: (projectId: string, body: { text: string; topics: string[]; maxResults: number }) =>
+    request<SourceItem[]>(`/research-projects/${projectId}/candidates/collect`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  listSourceRuns: (projectId: string) =>
+    request<SourceIngestionRun[]>(`/research-projects/${projectId}/source-runs`),
 
   // AI analysis (R3)
   screenCandidate: (projectId: string, sourceItemId: string, aiProviderId: string) =>

@@ -4,6 +4,26 @@ namespace Kairion.Application.Dtos;
 
 // ---- Research Projects -------------------------------------------------------
 
+public sealed class SourceProviderConfigRequest
+{
+    public string ProviderId { get; set; } = string.Empty;
+    public bool Enabled { get; set; }
+    public int MaxQueries { get; set; } = 5;
+    public int MaxResultsPerQuery { get; set; } = 50;
+    public string? Endpoint { get; set; }
+    public string? CredentialRef { get; set; }
+}
+
+public sealed class SourceProviderConfigResponse
+{
+    public string ProviderId { get; set; } = string.Empty;
+    public bool Enabled { get; set; }
+    public int MaxQueries { get; set; }
+    public int MaxResultsPerQuery { get; set; }
+    public string? Endpoint { get; set; }
+    public string? CredentialRef { get; set; }
+}
+
 public sealed class CreateResearchProjectRequest
 {
     public string Title { get; set; } = string.Empty;
@@ -12,6 +32,7 @@ public sealed class CreateResearchProjectRequest
     public List<string> Topics { get; set; } = new();
     public List<string> IncludedCompetitors { get; set; } = new();
     public List<string> EnabledSourceProviderIds { get; set; } = new();
+    public List<SourceProviderConfigRequest> ProviderConfigs { get; set; } = new();
     public string? QueryStrategy { get; set; }
     public DateTime? WindowStartUtc { get; set; }
     public DateTime? WindowEndUtc { get; set; }
@@ -25,6 +46,7 @@ public sealed class UpdateResearchProjectRequest
     public List<string> Topics { get; set; } = new();
     public List<string> IncludedCompetitors { get; set; } = new();
     public List<string> EnabledSourceProviderIds { get; set; } = new();
+    public List<SourceProviderConfigRequest> ProviderConfigs { get; set; } = new();
     public string? QueryStrategy { get; set; }
     public DateTime? WindowStartUtc { get; set; }
     public DateTime? WindowEndUtc { get; set; }
@@ -39,6 +61,7 @@ public sealed class ResearchProjectResponse
     public List<string> Topics { get; set; } = new();
     public List<string> IncludedCompetitors { get; set; } = new();
     public List<string> EnabledSourceProviderIds { get; set; } = new();
+    public List<SourceProviderConfigResponse> ProviderConfigs { get; set; } = new();
     public string? QueryStrategy { get; set; }
     public DateTime? WindowStartUtc { get; set; }
     public DateTime? WindowEndUtc { get; set; }
@@ -49,6 +72,18 @@ public sealed class ResearchProjectResponse
 }
 
 // ---- Source Candidates -------------------------------------------------------
+public sealed class SourceIngestionRunResponse
+{
+    public Guid Id { get; set; }
+    public Guid ProjectId { get; set; }
+    public Guid RunId { get; set; }
+    public string ProviderId { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public int CandidateCount { get; set; }
+    public string DiagnosticCode { get; set; } = string.Empty;
+    public DateTime RetrievedAtUtc { get; set; }
+    public DateTime? RetryAfterUtc { get; set; }
+}
 
 public sealed class ImportCandidateRequest
 {
@@ -66,6 +101,7 @@ public sealed class RunSourceQueryRequest
     public string Text { get; set; } = string.Empty;
     public List<string> Topics { get; set; } = new();
     public int MaxResults { get; set; } = 25;
+    public int MaxQueries { get; set; } = 5;
 }
 
 public sealed class SourceItemResponse

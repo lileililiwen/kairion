@@ -196,3 +196,35 @@ internal sealed class ObservationRepository : IObservationRepository
         }
     }
 }
+
+internal sealed class SourceIngestionRunRepository : ISourceIngestionRunRepository
+{
+    private readonly KairionDbContext _db;
+    public SourceIngestionRunRepository(KairionDbContext db) => _db = db;
+
+    public async Task AddAsync(SourceIngestionRun run, CancellationToken cancellationToken)
+    {
+        await _db.SourceIngestionRuns.AddAsync(run, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<SourceIngestionRun>> ListForProjectAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        return await _db.SourceIngestionRuns
+            .AsNoTracking()
+            .Where(r => r.ProjectId == projectId)
+            .OrderByDescending(r => r.RetrievedAtUtc)
+            .Take(100)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<SourceIngestionRun>> ListForRunAsync(Guid projectId, Guid runId, CancellationToken cancellationToken)
+    {
+        return await _db.SourceIngestionRuns
+            .AsNoTracking()
+            .Where(r => r.ProjectId == projectId && r.RunId == runId)
+            .OrderBy(r => r.ProviderId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+}

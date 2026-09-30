@@ -14,15 +14,18 @@ public sealed class ResearchProjectService
     private readonly IResearchProjectRepository _projects;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
+    private readonly IProviderRegistry _providers;
 
     public ResearchProjectService(
         IResearchProjectRepository projects,
         IUnitOfWork unitOfWork,
-        IClock clock)
+        IClock clock,
+        IProviderRegistry providers)
     {
         _projects = projects;
         _unitOfWork = unitOfWork;
         _clock = clock;
+        _providers = providers;
     }
 
     public async Task<Result<ResearchProjectResponse>> CreateAsync(
@@ -32,6 +35,7 @@ public sealed class ResearchProjectService
         try
         {
             ValidateCreate(request);
+            var providerSettings = BuildProviderSettings(request.ProviderConfigs, request.EnabledSourceProviderIds);
             var now = _clock.UtcNow;
             var project = new ResearchProject(
                 id: Guid.NewGuid(),
@@ -39,8 +43,9 @@ public sealed class ResearchProjectService
                 briefKind: request.BriefKind,
                 briefText: request.BriefText,
                 topics: request.Topics ?? new List<string>(),
-                sourceConfiguration: BuildSourceConfiguration(request),
-                createdUtc: now);
+                sourceConfiguration: BuildSourceConfiguration(request, providerSettings),
+                createdUtc: now,
+                providerSettings: providerSettings);
             await _projects.AddAsync(project, cancellationToken).ConfigureAwait(false);
             await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return Result<ResearchProjectResponse>.Success(ToResponse(project));
@@ -68,13 +73,15 @@ public sealed class ResearchProjectService
         try
         {
             ValidateUpdate(request);
+            var providerSettings = BuildProviderSettings(request.ProviderConfigs, request.EnabledSourceProviderIds);
             project.Update(
                 title: request.Title,
                 briefKind: request.BriefKind,
                 briefText: request.BriefText,
                 topics: request.Topics ?? new List<string>(),
-                sourceConfiguration: BuildSourceConfiguration(request),
-                updatedUtc: _clock.UtcNow);
+                sourceConfiguration: BuildSourceConfiguration(request, providerSettings),
+                updatedUtc: _clock.UtcNow,
+                providerSettings: providerSettings);
             await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return Result<ResearchProjectResponse>.Success(ToResponse(project));
         }
@@ -148,24 +155,81 @@ public sealed class ResearchProjectService
         }
     }
 
-    private static SourceConfiguration BuildSourceConfiguration(CreateResearchProjectRequest request)
+    private static SourceConfiguration BuildSourceConfiguration(CreateResearchProjectRequest request, IReadOnlyList<SourceProviderSettings> providerSettings)
     {
+        var enabled = providerSettings.Count > 0
+            ? providerSettings.Where(s => s.Enabled).Select(s => s.ProviderId).ToList()
+            : (request.EnabledSourceProviderIds ?? new List<string>());
         return new SourceConfiguration(
-            enabledSourceProviderIds: request.EnabledSourceProviderIds ?? new List<string>(),
+            enabledSourceProviderIds: enabled,
             includedCompetitors: request.IncludedCompetitors ?? new List<string>(),
             queryStrategy: request.QueryStrategy,
             windowStartUtc: request.WindowStartUtc,
             windowEndUtc: request.WindowEndUtc);
     }
 
-    private static SourceConfiguration BuildSourceConfiguration(UpdateResearchProjectRequest request)
+    private static SourceConfiguration BuildSourceConfiguration(UpdateResearchProjectRequest request, IReadOnlyList<SourceProviderSettings> providerSettings)
     {
+        var enabled = providerSettings.Count > 0
+            ? providerSettings.Where(s => s.Enabled).Select(s => s.ProviderId).ToList()
+            : (request.EnabledSourceProviderIds ?? new List<string>());
         return new SourceConfiguration(
-            enabledSourceProviderIds: request.EnabledSourceProviderIds ?? new List<string>(),
+            enabledSourceProviderIds: enabled,
             includedCompetitors: request.IncludedCompetitors ?? new List<string>(),
             queryStrategy: request.QueryStrategy,
             windowStartUtc: request.WindowStartUtc,
             windowEndUtc: request.WindowEndUtc);
+    }
+
+    private IReadOnlyList<SourceProviderSettings> BuildProviderSettings(
+        List<SourceProviderConfigRequest>? configs,
+        List<string>? legacyEnabledIds)
+    {
+        var known = _providers.ListSourceProviders().Select(p => p.ProviderId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var result = new List<SourceProviderSettings>();
+        if (configs is not null)
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var c in configs)
+            {
+                if (string.IsNullOrWhiteSpace(c.ProviderId))
+                {
+                    throw new DomainValidationException("providerConfigs.providerId is required.");
+                }
+                var key = c.ProviderId.Trim();
+                if (!known.Contains(key))
+                {
+                    throw new DomainValidationException($"Unknown source provider '{key}'. Available: {string.Join(", ", known.OrderBy(k => k))}.");
+                }
+                if (!seen.Add(key))
+                {
+                    throw new DomainValidationException($"Duplicate provider config '{key}'.");
+                }
+                if (!string.IsNullOrWhiteSpace(c.CredentialRef) && c.CredentialRef.Trim().Length > 200)
+                {
+                    throw new DomainValidationException("credentialRef must be 200 characters or fewer and must not contain a secret.");
+                }
+                // SourceProviderSettings constructor enforces 1..5 / 1..50 and HTTPS.
+                result.Add(new SourceProviderSettings(
+                    key, c.Enabled, c.MaxQueries, c.MaxResultsPerQuery, c.Endpoint, c.CredentialRef));
+            }
+        }
+        if (legacyEnabledIds is not null)
+        {
+            foreach (var id in legacyEnabledIds.Where(s => !string.IsNullOrWhiteSpace(s)))
+            {
+                var key = id.Trim();
+                if (!known.Contains(key))
+                {
+                    throw new DomainValidationException($"Unknown source provider '{key}'. Available: {string.Join(", ", known.OrderBy(k => k))}.");
+                }
+                if (result.All(s => !string.Equals(s.ProviderId, key, StringComparison.OrdinalIgnoreCase)))
+                {
+                    result.Add(new SourceProviderSettings(key, enabled: true));
+                }
+            }
+        }
+        return result;
     }
 
     internal static ResearchProjectResponse ToResponse(ResearchProject project)
@@ -179,6 +243,15 @@ public sealed class ResearchProjectService
             Topics = project.Topics.ToList(),
             IncludedCompetitors = project.SourceConfiguration.IncludedCompetitors.ToList(),
             EnabledSourceProviderIds = project.SourceConfiguration.EnabledSourceProviderIds.ToList(),
+            ProviderConfigs = project.ProviderSettings.Select(s => new SourceProviderConfigResponse
+            {
+                ProviderId = s.ProviderId,
+                Enabled = s.Enabled,
+                MaxQueries = s.MaxQueries,
+                MaxResultsPerQuery = s.MaxResultsPerQuery,
+                Endpoint = s.Endpoint,
+                CredentialRef = s.CredentialRef,
+            }).ToList(),
             QueryStrategy = project.SourceConfiguration.QueryStrategy,
             WindowStartUtc = project.SourceConfiguration.WindowStartUtc,
             WindowEndUtc = project.SourceConfiguration.WindowEndUtc,

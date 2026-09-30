@@ -18,7 +18,8 @@ public sealed class SourceFetchResult
         DateTime? publishedUtc,
         DateTime observedUtc,
         string provenanceJson,
-        ProviderObservation observation)
+        ProviderObservation observation,
+        string? authorHandle = null)
     {
         ProviderId = providerId;
         ExternalId = externalId;
@@ -31,6 +32,7 @@ public sealed class SourceFetchResult
             : DateTime.SpecifyKind(observedUtc, DateTimeKind.Utc);
         ProvenanceJson = provenanceJson;
         Observation = observation;
+        AuthorHandle = string.IsNullOrWhiteSpace(authorHandle) ? null : authorHandle.Trim();
     }
 
     public string ProviderId { get; }
@@ -42,6 +44,7 @@ public sealed class SourceFetchResult
     public DateTime ObservedUtc { get; }
     public string ProvenanceJson { get; }
     public ProviderObservation Observation { get; }
+    public string? AuthorHandle { get; }
 }
 
 /// <summary>
@@ -64,11 +67,15 @@ public interface ISourceProvider
     Task<bool> IsAvailableAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// Executes a search against the provider. The returned list MUST only contain
-    /// candidates that the provider is permitted to expose. Provider errors, rate limits,
-    /// and policy denials are encoded in the <see cref="SourceFetchResult.Observation"/>.
+    /// Executes a bounded search against the provider. Returns a
+    /// <see cref="SourceBatch"/> with zero or more normalized candidates plus a
+    /// terminal/partial status, safe diagnostic code, and retry-after hint.
+    /// Provider errors, rate limits, and policy denials are encoded in the
+    /// batch status — one provider failure never discards another provider's
+    /// accepted candidates. The returned candidates MUST only contain items the
+    /// provider is permitted to expose.
     /// </summary>
-    Task<IReadOnlyList<SourceFetchResult>> SearchAsync(SourceQuery query, CancellationToken cancellationToken);
+    Task<SourceBatch> SearchAsync(SourceQuery query, CancellationToken cancellationToken);
 
     /// <summary>
     /// Fetches a single candidate by its provider identity. Used to refresh metadata for

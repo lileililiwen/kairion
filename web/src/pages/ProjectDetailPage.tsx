@@ -7,6 +7,7 @@ import {
   KairionError,
   ResearchProject,
   SourceItem,
+  SourceProviderConfig,
   TrendResponse,
 } from "../api";
 
@@ -40,6 +41,14 @@ export function ProjectDetailPage() {
   const aiProviders = useQuery({
     queryKey: ["ai-providers"],
     queryFn: () => api.listAiProviders(),
+  });
+  const sourceProviders = useQuery({
+    queryKey: ["source-providers"],
+    queryFn: () => api.listSourceProviders(),
+  });
+  const sourceRuns = useQuery({
+    queryKey: ["source-runs", projectId],
+    queryFn: () => api.listSourceRuns(projectId),
   });
   const [window, setWindow] = useState<TrendWindow>("30d");
   const trends = useQuery<TrendResponse>({
@@ -85,6 +94,49 @@ export function ProjectDetailPage() {
     },
   });
 
+  const saveProviders = useMutation({
+    mutationFn: (configs: SourceProviderConfig[]) => {
+      const current = project.data;
+      if (!current) throw new Error("Project not loaded.");
+      return api.updateProject(projectId, {
+        title: current.title,
+        briefKind: current.briefKind,
+        briefText: current.briefText,
+        topics: current.topics,
+        includedCompetitors: current.includedCompetitors,
+        providerConfigs: configs,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    },
+  });
+
+  const collectAll = useMutation({
+    mutationFn: () => {
+      const current = project.data;
+      return api.collectCandidates(projectId, {
+        text: current?.briefText ?? "",
+        topics: current?.topics ?? [],
+        maxResults: 25,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["candidates", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["source-runs", projectId] });
+    },
+  });
+
+  const toggleProvider = (providerId: string, configs: SourceProviderConfig[]) => {
+    const existing = configs.find((c) => c.providerId === providerId);
+    const next: SourceProviderConfig[] = existing
+      ? configs.map((c) =>
+          c.providerId === providerId ? { ...c, enabled: !c.enabled } : c
+        )
+      : [...configs, { providerId, enabled: true, maxQueries: 5, maxResultsPerQuery: 50 }];
+    saveProviders.mutate(next);
+  };
+
   if (project.isLoading) return <div className="empty">Loading project…</div>;
   if (project.error) return <div className="error">Failed to load project.</div>;
   if (!project.data) return <div className="empty">Project not found.</div>;
@@ -120,6 +172,145 @@ export function ProjectDetailPage() {
         <div className="muted" style={{ marginTop: 8 }}>
           Source providers: {p.enabledSourceProviderIds.join(", ") || "(none — manual only)"}
         </div>
+      </div>
+
+      <div className="card">
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <h2 style={{ margin: 0 }}>Source providers</h2>
+          <button
+            type="button"
+            className="primary"
+            onClick={() => collectAll.mutate()}
+            disabled={collectAll.isPending}
+          >
+            {collectAll.isPending ? "Collecting…" : "Collect from enabled"}
+          </button>
+        </div>
+        <p className="muted">
+          Providers are disabled until explicitly enabled. Limits are bounded to
+          1–5 queries per run and 1–50 results per query. Secrets stay in
+          deployment configuration, never in project records.
+        </p>
+        {sourceProviders.isLoading ? (
+          <div className="empty">Loading providers…</div>
+        ) : sourceProviders.data ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Health</th>
+                <th>Limits</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {sourceProviders.data.map((sp) => {
+                const cfg = (p.providerConfigs ?? []).find(
+                  (c) => c.providerId === sp.providerId
+                );
+                const enabled = cfg?.enabled ?? false;
+                return (
+                  <tr key={sp.providerId}>
+                    <td>
+                      <span className="pill">{sp.providerId}</span>{" "}
+                      <span className="muted">{sp.displayName}</span>
+                      {sp.requiresCredentials ? (
+                        <span className="pill warn" style={{ marginLeft: 6 }}>
+                          BYOK
+                        </span>
+                      ) : null}
+                    </td>
+                    <td>
+                      <span
+                        className={
+                          sp.available ? "pill success" : "pill warn"
+                        }
+                      >
+                        {sp.available ? "available" : "unavailable"}
+                      </span>{" "}
+                      <span
+                        className={enabled ? "pill success" : "pill"}
+                      >
+                        {enabled ? "enabled" : "disabled"}
+                      </span>
+                    </td>
+                    <td className="muted">
+                      {cfg
+                        ? `${cfg.maxQueries} q/run · ${cfg.maxResultsPerQuery} r/q`
+                        : "defaults (5 q/run · 50 r/q)"}
+                      {cfg?.endpoint ? (
+                        <div style={{ fontSize: 12 }}>{cfg.endpoint}</div>
+                      ) : null}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggleProvider(sp.providerId, p.providerConfigs ?? [])
+                        }
+                        disabled={saveProviders.isPending}
+                      >
+                        {enabled ? "Disable" : "Enable"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : null}
+        {saveProviders.error ? (
+          <div className="error" style={{ marginTop: 8 }}>
+            {saveProviders.error instanceof KairionError
+              ? `${saveProviders.error.problem.code ?? "error"}: ${
+                  saveProviders.error.problem.detail ?? saveProviders.error.message
+                }`
+              : String(saveProviders.error)}
+          </div>
+        ) : null}
+        <h3 style={{ marginTop: 16 }}>Recent runs</h3>
+        {sourceRuns.isLoading ? (
+          <div className="empty">Loading runs…</div>
+        ) : sourceRuns.data && sourceRuns.data.length > 0 ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Status</th>
+                <th>Candidates</th>
+                <th>Diagnostic</th>
+                <th>Retrieved (UTC)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sourceRuns.data.slice(0, 10).map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <span className="pill">{r.providerId}</span>
+                  </td>
+                  <td>
+                    <span
+                      className={
+                        r.status === "Complete"
+                          ? "pill success"
+                          : r.status === "Partial"
+                          ? "pill warn"
+                          : "pill fail"
+                      }
+                    >
+                      {r.status}
+                    </span>
+                  </td>
+                  <td>{r.candidateCount}</td>
+                  <td className="muted">{r.diagnosticCode}</td>
+                  <td>{r.retrievedAtUtc.slice(0, 19).replace("T", " ")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="empty">No ingestion runs yet.</div>
+        )}
       </div>
 
       <div className="card">

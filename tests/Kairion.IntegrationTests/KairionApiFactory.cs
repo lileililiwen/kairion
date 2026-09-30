@@ -10,6 +10,7 @@ using FluentAssertions;
 using Kairion.Application.Abstractions;
 using Kairion.Application.Schemas;
 using Kairion.Domain;
+using Kairion.Infrastructure.Providers;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -44,10 +45,14 @@ public sealed class KairionApiFactory : WebApplicationFactory<Program>
         builder.ConfigureTestServices(services =>
         {
             // Drop the production providers; tests will register their own.
+            // Keep the manual intake provider known so legacy project payloads
+            // with enabledSourceProviderIds=["manual"] still validate; the spy
+            // provides the controllable fake-source adapter.
             var toRemove = services.Where(d => d.ServiceType == typeof(ISourceProvider) || d.ServiceType == typeof(IAiProvider)).ToList();
             foreach (var d in toRemove) services.Remove(d);
 
             services.AddSingleton<ProviderRegistrySpy>();
+            services.AddSingleton<ISourceProvider, ManualSourceProvider>();
             services.AddSingleton<ISourceProvider>(sp => sp.GetRequiredService<ProviderRegistrySpy>().Source);
             services.AddSingleton<IAiProvider>(sp => sp.GetRequiredService<ProviderRegistrySpy>().Ai);
         });
@@ -82,6 +87,9 @@ public sealed class ProviderRegistrySpy
 public sealed class FakeSourceProvider : ISourceProvider
 {
     public List<SourceFetchResult> QueuedResults { get; } = new();
+    public SourceRunStatus QueuedStatus { get; set; } = SourceRunStatus.Complete;
+    public string QueuedDiagnostic { get; set; } = "ok";
+    public DateTime? QueuedRetryAfterUtc { get; set; }
     public Exception? ThrowOnSearch { get; set; }
     public string ProviderId { get; set; } = "fake-source";
     public string DisplayName { get; set; } = "Fake source (test)";
@@ -89,10 +97,11 @@ public sealed class FakeSourceProvider : ISourceProvider
 
     public Task<bool> IsAvailableAsync(CancellationToken cancellationToken) => Task.FromResult(true);
 
-    public Task<IReadOnlyList<SourceFetchResult>> SearchAsync(SourceQuery query, CancellationToken cancellationToken)
+    public Task<SourceBatch> SearchAsync(SourceQuery query, CancellationToken cancellationToken)
     {
         if (ThrowOnSearch is not null) throw ThrowOnSearch;
-        return Task.FromResult<IReadOnlyList<SourceFetchResult>>(QueuedResults.ToList());
+        return Task.FromResult(new SourceBatch(
+            ProviderId, QueuedResults.ToList(), QueuedStatus, QueuedDiagnostic, DateTime.UtcNow, QueuedRetryAfterUtc));
     }
 
     public Task<SourceFetchResult?> FetchAsync(SourceReference reference, CancellationToken cancellationToken) =>

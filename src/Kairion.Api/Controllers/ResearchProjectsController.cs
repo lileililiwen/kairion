@@ -160,6 +160,31 @@ public sealed class ResearchProjectsController : ControllerBase
         return Ok(result.Value);
     }
 
+    [HttpPost("{id:guid}/candidates/collect")]
+    [ProducesResponseType(typeof(IReadOnlyList<SourceItemResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CollectCandidatesAsync(
+        Guid id,
+        [FromBody] RunSourceQueryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _intake.CollectFromEnabledProvidersAsync(
+            id, request.Text, request.Topics, request.MaxResults, cancellationToken).ConfigureAwait(false);
+        if (!result.IsSuccess || result.Value is null)
+        {
+            return this.FromResult(result, successLocation: string.Empty);
+        }
+        return Ok(result.Value);
+    }
+
+    [HttpGet("{id:guid}/source-runs")]
+    [ProducesResponseType(typeof(IReadOnlyList<SourceIngestionRunResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListSourceRunsAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var runs = await _intake.ListRunsAsync(id, cancellationToken).ConfigureAwait(false);
+        return Ok(runs);
+    }
+
     // ---- AI screening / analysis --------------------------------------------
 
     [HttpPost("{id:guid}/candidates/{sourceItemId:guid}/screening")]

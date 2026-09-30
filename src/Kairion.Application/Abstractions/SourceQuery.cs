@@ -15,7 +15,8 @@ public sealed class SourceQuery
         IReadOnlyList<string> competitors,
         DateTime? windowStartUtc,
         DateTime? windowEndUtc,
-        int maxResults)
+        int maxResults,
+        int maxQueries = SourceProviderLimits.MaxQueriesPerRun)
     {
         ProjectId = projectId;
         Text = text ?? string.Empty;
@@ -23,7 +24,8 @@ public sealed class SourceQuery
         Competitors = competitors ?? Array.Empty<string>();
         WindowStartUtc = windowStartUtc?.ToUniversalTime();
         WindowEndUtc = windowEndUtc?.ToUniversalTime();
-        MaxResults = maxResults > 0 ? maxResults : 25;
+        MaxResults = SourceProviderLimits.BoundResultsPerQuery(maxResults);
+        MaxQueries = SourceProviderLimits.BoundQueries(maxQueries);
     }
 
     public Guid ProjectId { get; }
@@ -33,4 +35,5 @@ public sealed class SourceQuery
     public DateTime? WindowStartUtc { get; }
     public DateTime? WindowEndUtc { get; }
     public int MaxResults { get; }
+    public int MaxQueries { get; }
 }

@@ -20,13 +20,13 @@ public sealed class ManualSourceProvider : ISourceProvider
 
     public Task<bool> IsAvailableAsync(CancellationToken cancellationToken) => Task.FromResult(true);
 
-    public Task<IReadOnlyList<SourceFetchResult>> SearchAsync(SourceQuery query, CancellationToken cancellationToken)
+    public Task<SourceBatch> SearchAsync(SourceQuery query, CancellationToken cancellationToken)
     {
         // Manual provider does not perform autonomous searches. A search against it
-        // returns an empty list with an informational observation so the UI can show
-        // that this provider does not auto-discover candidates.
-        IReadOnlyList<SourceFetchResult> empty = Array.Empty<SourceFetchResult>();
-        return Task.FromResult(empty);
+        // returns an empty Complete batch so the UI can show that this provider
+        // does not auto-discover candidates.
+        return Task.FromResult(SourceBatch.Empty(
+            ProviderKey, SourceRunStatus.Complete, "manual_no_search", DateTime.UtcNow));
     }
 
     public Task<SourceFetchResult?> FetchAsync(SourceReference reference, CancellationToken cancellationToken) =>
@@ -50,7 +50,7 @@ public sealed class DemoSearchSourceProvider : ISourceProvider
 
     public Task<bool> IsAvailableAsync(CancellationToken cancellationToken) => Task.FromResult(true);
 
-    public Task<IReadOnlyList<SourceFetchResult>> SearchAsync(SourceQuery query, CancellationToken cancellationToken)
+    public Task<SourceBatch> SearchAsync(SourceQuery query, CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
         var results = new List<SourceFetchResult>();
@@ -78,7 +78,7 @@ public sealed class DemoSearchSourceProvider : ISourceProvider
                 observation: observation));
         }
         _logger.LogInformation("DemoSearchSourceProvider returned {Count} deterministic candidates for project {ProjectId}.", results.Count, query.ProjectId);
-        return Task.FromResult<IReadOnlyList<SourceFetchResult>>(results);
+        return Task.FromResult(new SourceBatch(ProviderKey, results, SourceRunStatus.Complete, "ok", now));
     }
 
     public Task<SourceFetchResult?> FetchAsync(SourceReference reference, CancellationToken cancellationToken) =>

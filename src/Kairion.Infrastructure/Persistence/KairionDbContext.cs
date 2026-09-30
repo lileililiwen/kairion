@@ -11,6 +11,7 @@ public sealed class KairionDbContext : DbContext
 
     public DbSet<ResearchProject> ResearchProjects => Set<ResearchProject>();
     public DbSet<SourceItem> SourceItems => Set<SourceItem>();
+    public DbSet<SourceIngestionRun> SourceIngestionRuns => Set<SourceIngestionRun>();
     public DbSet<ScreeningResult> ScreeningResults => Set<ScreeningResult>();
     public DbSet<DeepAnalysis> DeepAnalyses => Set<DeepAnalysis>();
     public DbSet<PainCluster> PainClusters => Set<PainCluster>();
@@ -22,6 +23,7 @@ public sealed class KairionDbContext : DbContext
     {
         modelBuilder.ApplyConfiguration(new ResearchProjectConfiguration());
         modelBuilder.ApplyConfiguration(new SourceItemConfiguration());
+        modelBuilder.ApplyConfiguration(new SourceIngestionRunConfiguration());
         modelBuilder.ApplyConfiguration(new ScreeningResultConfiguration());
         modelBuilder.ApplyConfiguration(new DeepAnalysisConfiguration());
         modelBuilder.ApplyConfiguration(new PainClusterConfiguration());
@@ -98,6 +100,11 @@ internal sealed class ResearchProjectConfiguration : IEntityTypeConfiguration<Re
             .HasMaxLength(2_000);
         b.Property(p => p.WindowStartUtc).HasColumnName("source_window_start_utc");
         b.Property(p => p.WindowEndUtc).HasColumnName("source_window_end_utc");
+        b.Property(p => p.ProviderSettingsJson)
+            .HasColumnName("provider_settings_json")
+            .HasColumnType("jsonb")
+            .IsRequired()
+            .HasMaxLength(16_000);
 
         b.Property(p => p.CreatedUtc).HasColumnName("created_utc");
         b.Property(p => p.UpdatedUtc).HasColumnName("updated_utc");
@@ -105,6 +112,7 @@ internal sealed class ResearchProjectConfiguration : IEntityTypeConfiguration<Re
         b.Property(p => p.ArchivedUtc).HasColumnName("archived_utc");
 
         b.Ignore(p => p.SourceConfiguration);
+        b.Ignore(p => p.ProviderSettings);
     }
 }
 
@@ -142,6 +150,28 @@ internal sealed class SourceItemConfiguration : IEntityTypeConfiguration<SourceI
         b.HasIndex(s => new { s.ProjectId, s.CanonicalUrl })
             .HasDatabaseName("ix_source_items_canonical_url");
         b.HasIndex(s => s.ObservedUtc).HasDatabaseName("ix_source_items_observed_utc");
+    }
+}
+
+internal sealed class SourceIngestionRunConfiguration : IEntityTypeConfiguration<SourceIngestionRun>
+{
+    public void Configure(EntityTypeBuilder<SourceIngestionRun> b)
+    {
+        b.ToTable("source_ingestion_runs");
+        b.HasKey(r => r.Id);
+        b.Property(r => r.Id).HasColumnName("id");
+        b.Property(r => r.ProjectId).HasColumnName("project_id");
+        b.Property(r => r.RunId).HasColumnName("run_id");
+        b.Property(r => r.ProviderId).HasColumnName("provider_id").IsRequired().HasMaxLength(100);
+        b.Property(r => r.Status).HasColumnName("status").HasConversion<string>().IsRequired().HasMaxLength(32);
+        b.Property(r => r.CandidateCount).HasColumnName("candidate_count");
+        b.Property(r => r.DiagnosticCode).HasColumnName("diagnostic_code").IsRequired().HasMaxLength(200);
+        b.Property(r => r.RetrievedAtUtc).HasColumnName("retrieved_at_utc");
+        b.Property(r => r.RetryAfterUtc).HasColumnName("retry_after_utc");
+        b.Property(r => r.CreatedUtc).HasColumnName("created_utc");
+
+        b.HasIndex(r => new { r.ProjectId, r.RetrievedAtUtc }).HasDatabaseName("ix_source_runs_project_retrieved");
+        b.HasIndex(r => new { r.ProjectId, r.RunId }).HasDatabaseName("ix_source_runs_project_run");
     }
 }
 

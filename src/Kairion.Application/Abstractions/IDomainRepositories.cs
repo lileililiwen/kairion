@@ -20,6 +20,13 @@ public interface ISourceItemRepository
     void Remove(SourceItem item);
 }
 
+public interface ISourceIngestionRunRepository
+{
+    Task AddAsync(SourceIngestionRun run, CancellationToken cancellationToken);
+    Task<IReadOnlyList<SourceIngestionRun>> ListForProjectAsync(Guid projectId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<SourceIngestionRun>> ListForRunAsync(Guid projectId, Guid runId, CancellationToken cancellationToken);
+}
+
 public interface IScreeningResultRepository
 {
     Task<ScreeningResult?> LatestForSourceAsync(Guid sourceItemId, CancellationToken cancellationToken);

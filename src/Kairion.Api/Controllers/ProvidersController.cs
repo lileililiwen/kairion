@@ -19,13 +19,24 @@ public sealed class ProvidersController : ControllerBase
     }
 
     [HttpGet("source")]
-    [ProducesResponseType(typeof(IReadOnlyList<SourceProviderInfo>), StatusCodes.Status200OK)]
-    public IActionResult ListSourceProviders()
+    [ProducesResponseType(typeof(IReadOnlyList<SourceProviderHealthInfo>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListSourceProviders(CancellationToken cancellationToken)
     {
-        var providers = _registry.ListSourceProviders()
-            .Select(p => new SourceProviderInfo(p.ProviderId, p.DisplayName, p.RequiresCredentials))
-            .ToList();
-        return Ok(providers);
+        var list = new List<SourceProviderHealthInfo>();
+        foreach (var p in _registry.ListSourceProviders())
+        {
+            bool available;
+            try
+            {
+                available = await p.IsAvailableAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                available = false;
+            }
+            list.Add(new SourceProviderHealthInfo(p.ProviderId, p.DisplayName, p.RequiresCredentials, available));
+        }
+        return Ok(list);
     }
 
     [HttpGet("ai")]
@@ -40,4 +51,5 @@ public sealed class ProvidersController : ControllerBase
 }
 
 public sealed record SourceProviderInfo(string ProviderId, string DisplayName, bool RequiresCredentials);
+public sealed record SourceProviderHealthInfo(string ProviderId, string DisplayName, bool RequiresCredentials, bool Available);
 public sealed record AiProviderInfo(string ProviderId, string DisplayName, bool RequiresCredentials);
