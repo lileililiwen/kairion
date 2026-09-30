@@ -18,6 +18,8 @@ public sealed class KairionDbContext : DbContext
     public DbSet<ClusterAssignment> ClusterAssignments => Set<ClusterAssignment>();
     public DbSet<HumanRevision> HumanRevisions => Set<HumanRevision>();
     public DbSet<Observation> Observations => Set<Observation>();
+    public DbSet<Competitor> Competitors => Set<Competitor>();
+    public DbSet<SourceItemCompetitorAssignment> SourceItemCompetitorAssignments => Set<SourceItemCompetitorAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,6 +32,8 @@ public sealed class KairionDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ClusterAssignmentConfiguration());
         modelBuilder.ApplyConfiguration(new HumanRevisionConfiguration());
         modelBuilder.ApplyConfiguration(new ObservationConfiguration());
+        modelBuilder.ApplyConfiguration(new CompetitorConfiguration());
+        modelBuilder.ApplyConfiguration(new SourceItemCompetitorAssignmentConfiguration());
     }
 }
 
@@ -303,5 +307,45 @@ internal sealed class ObservationConfiguration : IEntityTypeConfiguration<Observ
         b.HasIndex(o => new { o.ProjectId, o.ObservedUtc }).HasDatabaseName("ix_observations_project_observed");
         b.HasIndex(o => new { o.ProjectId, o.ClusterId, o.ObservedUtc }).HasDatabaseName("ix_observations_project_cluster_observed");
         b.HasIndex(o => o.SourceItemId).HasDatabaseName("ix_observations_source");
+    }
+}
+
+internal sealed class CompetitorConfiguration : IEntityTypeConfiguration<Competitor>
+{
+    public void Configure(EntityTypeBuilder<Competitor> b)
+    {
+        b.ToTable("competitors");
+        b.HasKey(c => c.Id);
+        b.Property(c => c.Id).HasColumnName("id");
+        b.Property(c => c.ProjectId).HasColumnName("project_id");
+        b.Property(c => c.Name).HasColumnName("name").IsRequired().HasMaxLength(200);
+        b.Property(c => c.NormalizedName).HasColumnName("normalized_name").IsRequired().HasMaxLength(200);
+        b.Property(c => c.CreatedUtc).HasColumnName("created_utc");
+
+        b.HasIndex(c => new { c.ProjectId, c.NormalizedName })
+            .IsUnique()
+            .HasDatabaseName("ux_competitors_project_name");
+        b.HasIndex(c => c.ProjectId).HasDatabaseName("ix_competitors_project");
+    }
+}
+
+internal sealed class SourceItemCompetitorAssignmentConfiguration : IEntityTypeConfiguration<SourceItemCompetitorAssignment>
+{
+    public void Configure(EntityTypeBuilder<SourceItemCompetitorAssignment> b)
+    {
+        b.ToTable("source_item_competitors");
+        b.HasKey(a => a.Id);
+        b.Property(a => a.Id).HasColumnName("id");
+        b.Property(a => a.ProjectId).HasColumnName("project_id");
+        b.Property(a => a.SourceItemId).HasColumnName("source_item_id");
+        b.Property(a => a.CompetitorId).HasColumnName("competitor_id");
+        b.Property(a => a.Origin).HasColumnName("origin").HasConversion<string>().HasMaxLength(16);
+        b.Property(a => a.CreatedUtc).HasColumnName("created_utc");
+
+        b.HasIndex(a => new { a.SourceItemId, a.CompetitorId })
+            .IsUnique()
+            .HasDatabaseName("ux_source_item_competitors_item_competitor");
+        b.HasIndex(a => a.ProjectId).HasDatabaseName("ix_source_item_competitors_project");
+        b.HasIndex(a => a.CompetitorId).HasDatabaseName("ix_source_item_competitors_competitor");
     }
 }

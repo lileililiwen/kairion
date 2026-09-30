@@ -81,6 +81,8 @@ public static class KairionServiceCollectionExtensions
         services.AddScoped<IHumanRevisionRepository, HumanRevisionRepository>();
         services.AddScoped<IObservationRepository, ObservationRepository>();
         services.AddScoped<ISourceIngestionRunRepository, SourceIngestionRunRepository>();
+        services.AddScoped<ICompetitorRepository, CompetitorRepository>();
+        services.AddScoped<ISourceItemCompetitorRepository, SourceItemCompetitorRepository>();
 
         // Application services.
         services.AddSingleton<IClock, SystemClock>();
@@ -93,6 +95,7 @@ public static class KairionServiceCollectionExtensions
         services.AddScoped<AnalysisOrchestrator>();
         services.AddScoped<ClusteringService>();
         services.AddScoped<OpportunitySignalService>();
+        services.AddScoped<CompetitorGapService>();
 
         // Source / AI providers.
         services.AddSingleton<ISourceProvider, ManualSourceProvider>();

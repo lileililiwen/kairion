@@ -1,19 +1,53 @@
+# .NET build outputs
 **/bin/
 **/obj/
+*.user
+*.suo
+.vs/
+*.binlog
+BenchmarkDotNet.Artifacts/
+
+# .NET test outputs
+TestResults/
+**/coverage/
+coverage.lcov
+lcov.info
+*.coverage
+*.coveragexml
+
+# Node / web build outputs
 **/node_modules/
 **/dist/
-**/coverage/
+.vite/
 *.tsbuildinfo
+
+# Web test / e2e reports
+playwright-report/
+test-results/
+.nyc_output/
+
+# Logs and local artifacts
+*.log
+logs/
+artifacts/
+
+# Secrets and local environment
 .env
 .env.*
 !.env.example
-*.user
-*.suo
+
+# Editor and OS files
 .idea/
 .vscode/
 .DS_Store
+Thumbs.db
+
+# Local databases
 *.db
 *.db-shm
 *.db-wal
-logs/
-artifacts/
+
+# Temporary files
+*.tmp
+*.temp
+.sonar*/

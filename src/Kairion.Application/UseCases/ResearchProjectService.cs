@@ -12,17 +12,20 @@ namespace Kairion.Application.UseCases;
 public sealed class ResearchProjectService
 {
     private readonly IResearchProjectRepository _projects;
+    private readonly ICompetitorRepository _competitors;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly IProviderRegistry _providers;
 
     public ResearchProjectService(
         IResearchProjectRepository projects,
+        ICompetitorRepository competitors,
         IUnitOfWork unitOfWork,
         IClock clock,
         IProviderRegistry providers)
     {
         _projects = projects;
+        _competitors = competitors;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _providers = providers;
@@ -47,6 +50,7 @@ public sealed class ResearchProjectService
                 createdUtc: now,
                 providerSettings: providerSettings);
             await _projects.AddAsync(project, cancellationToken).ConfigureAwait(false);
+            await SyncCompetitorsAsync(project, cancellationToken).ConfigureAwait(false);
             await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return Result<ResearchProjectResponse>.Success(ToResponse(project));
         }
@@ -82,6 +86,7 @@ public sealed class ResearchProjectService
                 sourceConfiguration: BuildSourceConfiguration(request, providerSettings),
                 updatedUtc: _clock.UtcNow,
                 providerSettings: providerSettings);
+            await SyncCompetitorsAsync(project, cancellationToken).ConfigureAwait(false);
             await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return Result<ResearchProjectResponse>.Success(ToResponse(project));
         }
@@ -230,6 +235,20 @@ public sealed class ResearchProjectService
             }
         }
         return result;
+    }
+
+    private async Task SyncCompetitorsAsync(ResearchProject project, CancellationToken cancellationToken)
+    {
+        var existing = await _competitors.ListForProjectAsync(project.Id, cancellationToken).ConfigureAwait(false);
+        var known = existing.Select(c => c.NormalizedName).ToHashSet(StringComparer.Ordinal);
+        foreach (var raw in project.IncludedCompetitors ?? Array.Empty<string>())
+        {
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+            var name = raw.Trim();
+            if (name.Length > 200) continue;
+            if (!known.Add(Competitor.Normalize(name))) continue;
+            await _competitors.AddAsync(new Competitor(Guid.NewGuid(), project.Id, name, _clock.UtcNow), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     internal static ResearchProjectResponse ToResponse(ResearchProject project)

@@ -228,6 +228,73 @@ public sealed class SplitClusterRequest
     public List<Guid> SourceItemIds { get; set; } = new();
 }
 
+// ---- Competitor gaps ----------------------------------------------------------
+
+public sealed class CompetitorResponse
+{
+    public Guid Id { get; set; }
+    public Guid ProjectId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; }
+}
+
+public sealed class AssignCompetitorRequest
+{
+    public Guid CompetitorId { get; set; }
+}
+
+public sealed class CompetitorGapEvidenceRef
+{
+    public Guid SourceItemId { get; set; }
+    public string CanonicalUrl { get; set; } = string.Empty;
+    public string? Title { get; set; }
+}
+
+public sealed class CompetitorGapCell
+{
+    public Guid? CompetitorId { get; set; }
+    public string CompetitorName { get; set; } = string.Empty;
+    public Guid ClusterId { get; set; }
+    public string ClusterLabel { get; set; } = string.Empty;
+    public int EvidenceCount { get; set; }
+    public int SourceCount { get; set; }
+    public DateTime? FirstObservedUtc { get; set; }
+    public DateTime? LastObservedUtc { get; set; }
+    public int PreviousCount { get; set; }
+    public int? Delta { get; set; }
+    public decimal? PercentChange { get; set; }
+    public string Classification { get; set; } = "InsufficientData";
+    public bool LimitedEvidence { get; set; }
+    public decimal ConfidenceMean { get; set; }
+    public int ConfidenceSampleCount { get; set; }
+    public List<CompetitorGapEvidenceRef> RepresentativeEvidence { get; set; } = new();
+    public bool Stale { get; set; }
+}
+
+public sealed class CompetitorGapCoverage
+{
+    public int TotalEvidenceInWindow { get; set; }
+    public int MappedEvidenceInWindow { get; set; }
+    public int UnmappedEvidenceInWindow { get; set; }
+    public int CompetitorCount { get; set; }
+    public int ClusterCount { get; set; }
+    public int StaleEvidenceCount { get; set; }
+}
+
+public sealed class CompetitorGapResponse
+{
+    public Guid ProjectId { get; set; }
+    public string Window { get; set; } = string.Empty;
+    public DateTime AsOfUtc { get; set; }
+    public DateTime WindowStartUtc { get; set; }
+    public DateTime WindowEndUtc { get; set; }
+    public DateTime PreviousWindowStartUtc { get; set; }
+    public DateTime PreviousWindowEndUtc { get; set; }
+    public CompetitorGapCoverage Coverage { get; set; } = new();
+    public List<CompetitorResponse> Competitors { get; set; } = new();
+    public List<CompetitorGapCell> Cells { get; set; } = new();
+}
+
 // ---- Trends / Opportunity Signals -------------------------------------------
 
 public sealed class TrendResponse

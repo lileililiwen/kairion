@@ -19,6 +19,7 @@ public sealed class ResearchProjectsController : ControllerBase
     private readonly AnalysisOrchestrator _analysis;
     private readonly ClusteringService _clusters;
     private readonly OpportunitySignalService _opportunity;
+    private readonly CompetitorGapService _gaps;
     private readonly ILogger<ResearchProjectsController> _logger;
 
     public ResearchProjectsController(
@@ -27,6 +28,7 @@ public sealed class ResearchProjectsController : ControllerBase
         AnalysisOrchestrator analysis,
         ClusteringService clusters,
         OpportunitySignalService opportunity,
+        CompetitorGapService gaps,
         ILogger<ResearchProjectsController> logger)
     {
         _projects = projects;
@@ -34,6 +36,7 @@ public sealed class ResearchProjectsController : ControllerBase
         _analysis = analysis;
         _clusters = clusters;
         _opportunity = opportunity;
+        _gaps = gaps;
         _logger = logger;
     }
 
@@ -313,6 +316,115 @@ public sealed class ResearchProjectsController : ControllerBase
         var service = HttpContext.RequestServices.GetRequiredService<TrendService>();
         var response = await service.ComputeProjectTrendAsync(id, trendWindow, cancellationToken).ConfigureAwait(false);
         return Ok(response);
+    }
+
+    // ---- Competitor gaps -------------------------------------------------------
+
+    [HttpGet("{id:guid}/competitors")]
+    [ProducesResponseType(typeof(IReadOnlyList<CompetitorResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ListCompetitorsAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var project = await _projects.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        if (project is null || string.Equals(project.State.ToString(), "Archived", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound();
+        }
+        var items = await _gaps.ListAsync(id, cancellationToken).ConfigureAwait(false);
+        return Ok(items);
+    }
+
+    [HttpPost("{id:guid}/candidates/{sourceItemId:guid}/competitor-assignments")]
+    [ProducesResponseType(typeof(CompetitorResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AssignCompetitorAsync(
+        Guid id,
+        Guid sourceItemId,
+        [FromBody] AssignCompetitorRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null || request.CompetitorId == Guid.Empty)
+        {
+            return this.BadRequest(ProblemDetailsResults.Build(
+                controller: this,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Validation failed",
+                message: "competitorId is required.",
+                code: "validation_failed"));
+        }
+        var result = await _gaps.AssignAsync(id, sourceItemId, request.CompetitorId, Domain.AssignmentOrigin.Human, cancellationToken).ConfigureAwait(false);
+        if (!result.IsSuccess || result.Value is null)
+        {
+            var message = result.Error ?? "Assignment failed.";
+            if (message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Status = StatusCodes.Status404NotFound,
+                    Title = "Not found",
+                    Detail = message,
+                    Type = "https://kairion.dev/errors/not_found",
+                });
+            }
+            return this.BadRequest(ProblemDetailsResults.Build(
+                controller: this,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Validation failed",
+                message: message,
+                code: "validation_failed"));
+        }
+        return Ok(result.Value);
+    }
+
+    [HttpDelete("{id:guid}/candidates/{sourceItemId:guid}/competitor-assignments/{competitorId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UnassignCompetitorAsync(
+        Guid id, Guid sourceItemId, Guid competitorId, CancellationToken cancellationToken)
+    {
+        var result = await _gaps.UnassignAsync(id, sourceItemId, competitorId, cancellationToken).ConfigureAwait(false);
+        if (!result.IsSuccess)
+        {
+            return NotFound();
+        }
+        return NoContent();
+    }
+
+    [HttpGet("{id:guid}/competitor-gaps")]
+    [ProducesResponseType(typeof(CompetitorGapResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CompetitorGapsAsync(
+        Guid id,
+        [FromQuery] string window = "30d",
+        [FromQuery] Guid[]? competitorId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Kairion.Application.Trends.TrendWindowExtensions.TryParse(window, out var trendWindow))
+        {
+            return this.BadRequest(ProblemDetailsResults.Build(
+                controller: this,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Validation failed",
+                message: $"Unsupported trend window '{window}'. Use one of: 7d, 30d, 90d.",
+                code: "validation_failed"));
+        }
+        try
+        {
+            var response = await _gaps.ComputeAsync(id, trendWindow, competitorId ?? Array.Empty<Guid>(), cancellationToken).ConfigureAwait(false);
+            if (response is null) return NotFound();
+            return Ok(response);
+        }
+        catch (Domain.DomainValidationException ex)
+        {
+            return this.BadRequest(ProblemDetailsResults.Build(
+                controller: this,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Validation failed",
+                message: ex.Message,
+                code: "validation_failed"));
+        }
     }
 
     // ---- Opportunity signals -------------------------------------------------

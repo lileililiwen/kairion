@@ -1,7 +1,7 @@
 # source-adapters Specification
 
 ## Purpose
-TBD - created by archiving change additional-source-adapters. Update Purpose after archive.
+Allow an owner to enable supported source providers per research project with validated limits, and to retrieve normalized provenance-preserving candidates with isolated, inspectable provider failures.
 ## Requirements
 ### Requirement: Providers are independently configured and bounded
 The system MUST allow an owner to enable supported source providers per research project with validated limits and MUST keep providers disabled until explicitly configured.

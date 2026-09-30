@@ -241,6 +241,59 @@ export interface SourceIngestionRun {
   retryAfterUtc: string | null;
 }
 
+export interface Competitor {
+  id: string;
+  projectId: string;
+  name: string;
+  createdUtc: string;
+}
+
+export interface CompetitorGapEvidenceRef {
+  sourceItemId: string;
+  canonicalUrl: string;
+  title: string | null;
+}
+
+export interface CompetitorGapCell {
+  competitorId: string | null;
+  competitorName: string;
+  clusterId: string;
+  clusterLabel: string;
+  evidenceCount: number;
+  sourceCount: number;
+  firstObservedUtc: string | null;
+  lastObservedUtc: string | null;
+  previousCount: number;
+  delta: number | null;
+  percentChange: number | null;
+  classification: string;
+  limitedEvidence: boolean;
+  confidenceMean: number;
+  confidenceSampleCount: number;
+  representativeEvidence: CompetitorGapEvidenceRef[];
+  stale: boolean;
+}
+
+export interface CompetitorGapResponse {
+  projectId: string;
+  window: string;
+  asOfUtc: string;
+  windowStartUtc: string;
+  windowEndUtc: string;
+  previousWindowStartUtc: string;
+  previousWindowEndUtc: string;
+  coverage: {
+    totalEvidenceInWindow: number;
+    mappedEvidenceInWindow: number;
+    unmappedEvidenceInWindow: number;
+    competitorCount: number;
+    clusterCount: number;
+    staleEvidenceCount: number;
+  };
+  competitors: Competitor[];
+  cells: CompetitorGapCell[];
+}
+
 export interface AiProviderInfo {
   providerId: string;
   displayName: string;
@@ -318,4 +371,24 @@ export const api = {
     request<OpportunitySignalResponse>(
       `/research-projects/${projectId}/opportunity-signals/${clusterId}?window=${window}`
     ),
+
+  // Competitor gaps (read-only comparison matrix)
+  listCompetitors: (projectId: string) =>
+    request<Competitor[]>(`/research-projects/${projectId}/competitors`),
+  assignCompetitor: (projectId: string, sourceItemId: string, competitorId: string) =>
+    request<Competitor>(
+      `/research-projects/${projectId}/candidates/${sourceItemId}/competitor-assignments`,
+      { method: "POST", body: JSON.stringify({ competitorId }) }
+    ),
+  unassignCompetitor: (projectId: string, sourceItemId: string, competitorId: string) =>
+    request<void>(
+      `/research-projects/${projectId}/candidates/${sourceItemId}/competitor-assignments/${competitorId}`,
+      { method: "DELETE" }
+    ),
+  competitorGaps: (projectId: string, window: string, competitorIds: string[] = []) => {
+    const filter = competitorIds.map((id) => `&competitorId=${encodeURIComponent(id)}`).join("");
+    return request<CompetitorGapResponse>(
+      `/research-projects/${projectId}/competitor-gaps?window=${window}${filter}`
+    );
+  },
 };

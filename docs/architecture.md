@@ -1,6 +1,6 @@
 # Kairion architecture decisions
 
-Status: approved planning baseline for the first implementation package; not runtime evidence.
+Status: implemented baseline — the demand-research MVP, source adapters, and competitor gap matrix run on this stack and are verified by .NET + web tests and strict OpenSpec validation.
 
 ## ADR 0001 — Self-hosted .NET and React application
 
@@ -17,11 +17,11 @@ Status: approved planning baseline for the first implementation package; not run
 
 ## ADR 0003 — Persist evidence; compute statistics in code
 
-Store research project, source item, screening result, deep analysis, cluster, cluster assignment, and observation timestamps in PostgreSQL. Unique source identity is `(provider, external_id)` with canonical URL as a deduplication hint, not the sole identity. Every AI result is versioned and points to its source item. Cluster edits preserve audit history. Trend counts query observations by UTC time window; AI cannot write count or trend fields.
+Store research project, source item, screening result, deep analysis, cluster, cluster assignment, observation, project-scoped competitor, and explicit source-item competitor-assignment timestamps in PostgreSQL. Unique source identity is `(provider, external_id)` with canonical URL as a deduplication hint, not the sole identity. Competitor identity is `(project_id, normalized_name)` with a stable surrogate id; gap counts query source items by effective UTC date within the selected window and never infer attribution. Every AI result is versioned and points to its source item. Cluster edits preserve audit history. Trend counts query observations by UTC time window; AI cannot write count or trend fields.
 
 ## Shared-library decision
 
-Inspect `dotnet-platform-libs` when implementation begins. It owns .NET 10 `Platform.Ai.Contracts`, `Platform.Ai.OpenAiCompatible`, `Platform.Ai.Anthropic`, `Platform.Ai.Ollama`, and `Platform.Jobs.Hangfire` packages. Decision: **deferred investigation** for consuming compatible published packages; this bootstrap does not add project references or modify that sibling. Kairion retains source/evidence/domain contracts because those are product-specific. Dependency direction stays from Kairion application/infrastructure to optional versioned platform packages, never from the platform into Kairion.
+Inspect `dotnet-platform-libs` when implementation begins. It owns .NET 10 `Platform.Ai.Contracts`, `Platform.Ai.OpenAiCompatible`, `Platform.Ai.Anthropic`, `Platform.Ai.Ollama`, and `Platform.Jobs.Hangfire` packages. Decision: **evaluated per change, keep local** — no compatible demand-cluster or competitor-semantics capability exists there, so no project reference is added and that sibling is never modified. Kairion retains source/evidence/domain contracts because those are product-specific. Dependency direction stays from Kairion application/infrastructure to optional versioned platform packages, never from the platform into Kairion.
 
 ## Security and privacy
 

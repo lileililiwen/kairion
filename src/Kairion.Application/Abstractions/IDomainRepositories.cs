@@ -65,3 +65,18 @@ public interface IObservationRepository
     Task AddAsync(Observation observation, CancellationToken cancellationToken);
     Task UpdateClusterAssignmentAsync(Guid sourceItemId, Guid? clusterId, CancellationToken cancellationToken);
 }
+
+public interface ICompetitorRepository
+{
+    Task<Competitor?> FindAsync(Guid id, CancellationToken cancellationToken);
+    Task<IReadOnlyList<Competitor>> ListForProjectAsync(Guid projectId, CancellationToken cancellationToken);
+    Task AddAsync(Competitor competitor, CancellationToken cancellationToken);
+}
+
+public interface ISourceItemCompetitorRepository
+{
+    Task<IReadOnlyList<SourceItemCompetitorAssignment>> ListForProjectAsync(Guid projectId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<SourceItemCompetitorAssignment>> ListForSourceAsync(Guid sourceItemId, CancellationToken cancellationToken);
+    Task AddAsync(SourceItemCompetitorAssignment assignment, CancellationToken cancellationToken);
+    void Remove(SourceItemCompetitorAssignment assignment);
+}

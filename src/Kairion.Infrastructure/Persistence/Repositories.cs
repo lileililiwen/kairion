@@ -228,3 +228,57 @@ internal sealed class SourceIngestionRunRepository : ISourceIngestionRunReposito
             .ConfigureAwait(false);
     }
 }
+
+internal sealed class CompetitorRepository : ICompetitorRepository
+{
+    private readonly KairionDbContext _db;
+    public CompetitorRepository(KairionDbContext db) => _db = db;
+
+    public Task<Competitor?> FindAsync(Guid id, CancellationToken cancellationToken) =>
+        _db.Competitors.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<Competitor>> ListForProjectAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        return await _db.Competitors
+            .AsNoTracking()
+            .Where(c => c.ProjectId == projectId)
+            .OrderBy(c => c.Name)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AddAsync(Competitor competitor, CancellationToken cancellationToken)
+    {
+        await _db.Competitors.AddAsync(competitor, cancellationToken).ConfigureAwait(false);
+    }
+}
+
+internal sealed class SourceItemCompetitorRepository : ISourceItemCompetitorRepository
+{
+    private readonly KairionDbContext _db;
+    public SourceItemCompetitorRepository(KairionDbContext db) => _db = db;
+
+    public async Task<IReadOnlyList<SourceItemCompetitorAssignment>> ListForProjectAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        return await _db.SourceItemCompetitorAssignments
+            .AsNoTracking()
+            .Where(a => a.ProjectId == projectId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<SourceItemCompetitorAssignment>> ListForSourceAsync(Guid sourceItemId, CancellationToken cancellationToken)
+    {
+        return await _db.SourceItemCompetitorAssignments
+            .Where(a => a.SourceItemId == sourceItemId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AddAsync(SourceItemCompetitorAssignment assignment, CancellationToken cancellationToken)
+    {
+        await _db.SourceItemCompetitorAssignments.AddAsync(assignment, cancellationToken).ConfigureAwait(false);
+    }
+
+    public void Remove(SourceItemCompetitorAssignment assignment) => _db.SourceItemCompetitorAssignments.Remove(assignment);
+}

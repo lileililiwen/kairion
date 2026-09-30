@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import {
   api,
   ClusterResponse,
+  CompetitorGapResponse,
   KairionError,
   ResearchProject,
   SourceItem,
@@ -54,6 +55,16 @@ export function ProjectDetailPage() {
   const trends = useQuery<TrendResponse>({
     queryKey: ["trends", projectId, window],
     queryFn: () => api.projectTrends(projectId, window),
+  });
+  const [gapWindow, setGapWindow] = useState<TrendWindow>("30d");
+  const [gapCompetitorFilter, setGapCompetitorFilter] = useState<string[]>([]);
+  const competitors = useQuery({
+    queryKey: ["competitors", projectId],
+    queryFn: () => api.listCompetitors(projectId),
+  });
+  const gaps = useQuery<CompetitorGapResponse>({
+    queryKey: ["competitor-gaps", projectId, gapWindow, gapCompetitorFilter],
+    queryFn: () => api.competitorGaps(projectId, gapWindow, gapCompetitorFilter),
   });
 
   const [importUrl, setImportUrl] = useState("");
@@ -374,6 +385,178 @@ export function ProjectDetailPage() {
             <div className="muted" style={{ marginTop: 8 }}>
               Window {trends.data.windowStartUtc.slice(0, 10)} →{" "}
               {trends.data.windowEndUtc.slice(0, 10)} · as-of {trends.data.asOfUtc.slice(0, 19)}Z
+            </div>
+          </>
+        ) : null}
+      </div>
+
+      <div className="card">
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <h2 style={{ margin: 0 }}>Competitor gap signals</h2>
+          <div className="row tight">
+            {(["7d", "30d", "90d"] as const).map((w) => (
+              <button
+                key={w}
+                type="button"
+                className={gapWindow === w ? "primary" : ""}
+                onClick={() => setGapWindow(w)}
+              >
+                {w}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="muted">
+          Deterministic competitor-by-cluster signals computed from stored
+          evidence timestamps and explicit competitor assignments. Unassigned
+          items stay under “Unmapped” — the matrix never infers a competitor.
+          Counts below 3 sources show “limited evidence” instead of a trend.
+        </p>
+        {competitors.data && competitors.data.length > 0 ? (
+          <div className="row tight" style={{ flexWrap: "wrap", marginBottom: 8 }}>
+            {competitors.data.map((c) => {
+              const active = gapCompetitorFilter.includes(c.id);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={active ? "primary" : ""}
+                  onClick={() =>
+                    setGapCompetitorFilter((prev) =>
+                      prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id]
+                    )
+                  }
+                >
+                  {c.name}
+                </button>
+              );
+            })}
+            {gapCompetitorFilter.length > 0 ? (
+              <button type="button" onClick={() => setGapCompetitorFilter([])}>
+                Clear filter
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {gaps.isLoading ? (
+          <div className="empty">Computing gap signals…</div>
+        ) : gaps.error ? (
+          <div className="error">Failed to load gap signals.</div>
+        ) : gaps.data ? (
+          <>
+            <div className="kpi-grid" style={{ marginTop: 8 }}>
+              <div className="kpi">
+                <div className="label">Evidence signals</div>
+                <div className="value">{gaps.data.coverage.totalEvidenceInWindow}</div>
+              </div>
+              <div className="kpi">
+                <div className="label">Mapped signals</div>
+                <div className="value">{gaps.data.coverage.mappedEvidenceInWindow}</div>
+              </div>
+              <div className="kpi">
+                <div className="label">Unmapped signals</div>
+                <div className="value">{gaps.data.coverage.unmappedEvidenceInWindow}</div>
+              </div>
+              <div className="kpi">
+                <div className="label">Competitors × clusters</div>
+                <div className="value">
+                  {gaps.data.coverage.competitorCount} × {gaps.data.coverage.clusterCount}
+                </div>
+              </div>
+            </div>
+            {gaps.data.cells.length > 0 ? (
+              <table style={{ marginTop: 12 }}>
+                <thead>
+                  <tr>
+                    <th>Competitor</th>
+                    <th>Cluster</th>
+                    <th>Signals</th>
+                    <th>Δ vs prior</th>
+                    <th>Trend</th>
+                    <th>Confidence</th>
+                    <th>Evidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gaps.data.cells
+                    .filter((cell) => cell.evidenceCount > 0 || cell.previousCount > 0)
+                    .map((cell) => (
+                      <tr
+                        key={`${cell.competitorId ?? "unmapped"}-${cell.clusterId}`}
+                        style={
+                          cell.competitorId === null ? { background: "#fff8e1" } : undefined
+                        }
+                      >
+                        <td>
+                          {cell.competitorId === null ? (
+                            <span className="pill warn">Unmapped</span>
+                          ) : (
+                            <span className="pill">{cell.competitorName}</span>
+                          )}
+                        </td>
+                        <td>{cell.clusterLabel}</td>
+                        <td>
+                          {cell.evidenceCount}
+                          {cell.limitedEvidence ? (
+                            <span className="pill warn" style={{ marginLeft: 6 }}>
+                              limited evidence
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="muted">
+                          {cell.delta === null ? "—" : `${cell.delta > 0 ? "+" : ""}${cell.delta}`}
+                          {cell.percentChange !== null
+                            ? ` (${(cell.percentChange * 100).toFixed(1)}%)`
+                            : ""}
+                        </td>
+                        <td>
+                          <span
+                            className={
+                              cell.classification === "Emerging"
+                                ? "pill success"
+                                : cell.classification === "Declining"
+                                  ? "pill fail"
+                                  : "pill"
+                            }
+                          >
+                            {cell.classification}
+                          </span>
+                          {cell.stale ? (
+                            <span className="pill warn" style={{ marginLeft: 6 }}>
+                              stale
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="muted">
+                          {cell.confidenceSampleCount > 0
+                            ? `${cell.confidenceMean.toFixed(2)} (n=${cell.confidenceSampleCount})`
+                            : "—"}
+                        </td>
+                        <td>
+                          {cell.representativeEvidence.map((e) => (
+                            <div key={e.sourceItemId} style={{ fontSize: 12 }}>
+                              <a href={e.canonicalUrl} target="_blank" rel="noreferrer">
+                                {e.title ?? e.canonicalUrl}
+                              </a>
+                            </div>
+                          ))}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="empty" style={{ marginTop: 12 }}>
+                No gap signals in this window yet. Assign candidate evidence to a
+                competitor to populate the matrix.
+              </div>
+            )}
+            <div className="muted" style={{ marginTop: 8 }}>
+              Window {gaps.data.windowStartUtc.slice(0, 10)} →{" "}
+              {gaps.data.windowEndUtc.slice(0, 10)} · prior from{" "}
+              {gaps.data.previousWindowStartUtc.slice(0, 10)} · as-of{" "}
+              {gaps.data.asOfUtc.slice(0, 19)}Z · evidence signals, not business
+              validation.
             </div>
           </>
         ) : null}
